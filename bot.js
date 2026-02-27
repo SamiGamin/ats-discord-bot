@@ -7,7 +7,7 @@ const readline = require('readline');
 // ─── Rutas de archivos ───
 const CONFIG_PATH = path.resolve(__dirname, 'config.json');
 const STATS_PATH = path.resolve(__dirname, 'stats.json');
-const GALLERY_PATH = path.resolve(__dirname, '..', 'ildc-website', 'gallery.json');
+
 
 // ─── Temas del embed ───
 const THEMES = {
@@ -54,7 +54,7 @@ const DEFAULT_CONFIG = {
   mods: [],
   messageId: null,
   theme: 'clasico',
-  capturesChannelId: '',
+
   welcomeMessage: '¡Bienvenido al convoy, **{player}**! 🚛 Buena ruta, camionero.'
 };
 
@@ -139,8 +139,7 @@ let serverStatus = {
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.GuildMessages
   ]
 });
 
@@ -189,10 +188,7 @@ const commands = [
       .setName('bienvenida')
       .setDescription('Personalizar mensaje de bienvenida')
       .addStringOption(opt => opt.setName('mensaje').setDescription('Mensaje ({player} = nombre del jugador)').setRequired(true)))
-    .addSubcommand(sub => sub
-      .setName('galeria')
-      .setDescription('Canal de capturas para la galeria web')
-      .addChannelOption(opt => opt.setName('canal').setDescription('Canal de capturas (#capturas)').setRequired(true)))
+
     .addSubcommand(sub => sub
       .setName('ver')
       .setDescription('Ver la configuracion actual')),
@@ -710,11 +706,7 @@ client.on('interactionCreate', async (interaction) => {
       saveConfig(config);
       const preview = config.welcomeMessage.replace(/{player}/g, 'NuevoJugador');
       await interaction.reply({ content: `✅ Mensaje de bienvenida actualizado.\n\n**Vista previa:**\n👋 ${preview}`, ephemeral: true });
-    } else if (sub === 'galeria') {
-      const canal = interaction.options.getChannel('canal');
-      config.capturesChannelId = canal.id;
-      saveConfig(config);
-      await interaction.reply({ content: `✅ Canal de capturas: <#${canal.id}>\nLas imagenes subidas ahi se agregaran automaticamente a la galeria web 📸`, ephemeral: true });
+
 
     } else if (sub === 'ver') {
       const logPath = path.resolve(__dirname, config.logPath);
@@ -865,57 +857,7 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-// ─── Galería automática ───
-function loadGallery() {
-  try {
-    if (fs.existsSync(GALLERY_PATH)) {
-      return JSON.parse(fs.readFileSync(GALLERY_PATH, 'utf-8'));
-    }
-  } catch (e) {}
-  return [];
-}
 
-function saveGallery(gallery) {
-  try {
-    fs.writeFileSync(GALLERY_PATH, JSON.stringify(gallery, null, 2), 'utf-8');
-    console.log(`[BOT] Galeria actualizada (${gallery.length} imagenes).`);
-  } catch (e) {
-    console.log('[ERROR] No se pudo guardar gallery.json:', e.message);
-  }
-}
-
-// ─── Escuchar imágenes en #capturas ───
-client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
-  if (!config.capturesChannelId) return;
-  if (message.channel.id !== config.capturesChannelId) return;
-
-  const images = message.attachments.filter(att =>
-    att.contentType && att.contentType.startsWith('image/')
-  );
-
-  if (images.size === 0) return;
-
-  const gallery = loadGallery();
-
-  images.forEach(img => {
-    gallery.push({
-      url: img.url,
-      author: message.author.username,
-      date: new Date().toISOString(),
-      width: img.width,
-      height: img.height
-    });
-  });
-
-  // Mantener máximo 50 imágenes
-  while (gallery.length > 50) gallery.shift();
-
-  saveGallery(gallery);
-
-  // Reacción para confirmar que se guardó
-  try { await message.react('📸'); } catch (e) {}
-});
 
 // ─── Bot listo ───
 client.once('ready', async () => {
