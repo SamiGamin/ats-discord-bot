@@ -1,0 +1,13 @@
+{
+  "name": "ats-discord-bot",
+  "version": "1.0.0",
+  "description": "Bot de Discord que monitorea el servidor ATS Convoy Latinos en Ruta",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.7"
+  }
+}

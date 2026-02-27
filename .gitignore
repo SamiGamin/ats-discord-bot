@@ -1,0 +1,6 @@
+.env
+node_modules/
+config.json
+stats.json
+key.txt
+mods_activos.txt
