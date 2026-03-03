@@ -52,6 +52,7 @@ const DEFAULT_CONFIG = {
   logPath: '../game.log.txt',
   serverConfigPath: '../server_config.sii',
   mods: [],
+  showMods: true,
   messageId: null,
   theme: 'clasico',
 
@@ -265,7 +266,13 @@ const commands = [
       .setDescription('Ver la lista de mods'))
     .addSubcommand(sub => sub
       .setName('limpiar')
-      .setDescription('Quitar todos los mods de la lista')),
+      .setDescription('Quitar todos los mods de la lista'))
+    .addSubcommand(sub => sub
+      .setName('ocultar')
+      .setDescription('Ocultar la seccion de mods en el embed'))
+    .addSubcommand(sub => sub
+      .setName('mostrar')
+      .setDescription('Mostrar la seccion de mods en el embed')),
 
   new SlashCommandBuilder()
     .setName('ranking')
@@ -349,23 +356,25 @@ function createStatusEmbed() {
     }
   }
 
-  // Mods
-  if (config.mods.length > 0) {
-    const modList = config.mods.map((m, i) => {
-      if (m.url) return `\`${i + 1}.\` [${m.name}](${m.url})`;
-      return `\`${i + 1}.\` ${m.name}`;
-    }).join('\n');
-    embed.addFields({
-      name: `🧩 ${isOnline ? 'Mods activos' : 'Mods requeridos'} (${config.mods.length})`,
-      value: modList.length > 1024 ? modList.substring(0, 1020) + '...' : modList,
-      inline: false
-    });
-  } else {
-    embed.addFields({
-      name: '🧩 Mods',
-      value: '_Sin mods - Servidor vanilla_',
-      inline: false
-    });
+  // Mods (solo si showMods esta activo)
+  if (config.showMods !== false) {
+    if (config.mods.length > 0) {
+      const modList = config.mods.map((m, i) => {
+        if (m.url) return `\`${i + 1}.\` [${m.name}](${m.url})`;
+        return `\`${i + 1}.\` ${m.name}`;
+      }).join('\n');
+      embed.addFields({
+        name: `\uD83E\uDDE9 ${isOnline ? 'Mods activos' : 'Mods requeridos'} (${config.mods.length})`,
+        value: modList.length > 1024 ? modList.substring(0, 1020) + '...' : modList,
+        inline: false
+      });
+    } else {
+      embed.addFields({
+        name: '\uD83E\uDDE9 Mods',
+        value: '_Sin mods - Servidor vanilla_',
+        inline: false
+      });
+    }
   }
 
   // Info del servidor
@@ -822,7 +831,19 @@ client.on('interactionCreate', async (interaction) => {
     } else if (sub === 'limpiar') {
       config.mods = [];
       saveConfig(config);
-      await interaction.reply({ content: '✅ Todos los mods eliminados.', ephemeral: true });
+      await interaction.reply({ content: '\u2705 Todos los mods eliminados.', ephemeral: true });
+      updateDiscordEmbed();
+
+    } else if (sub === 'ocultar') {
+      config.showMods = false;
+      saveConfig(config);
+      await interaction.reply({ content: '\u2705 Seccion de mods **oculta** del embed. Usa `/mod mostrar` para volver a mostrarla.', ephemeral: true });
+      updateDiscordEmbed();
+
+    } else if (sub === 'mostrar') {
+      config.showMods = true;
+      saveConfig(config);
+      await interaction.reply({ content: '\u2705 Seccion de mods **visible** en el embed.', ephemeral: true });
       updateDiscordEmbed();
     }
   }
