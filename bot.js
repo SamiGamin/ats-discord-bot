@@ -93,7 +93,61 @@ function loadStats() {
 function saveStats(stats) {
   try {
     fs.writeFileSync(STATS_PATH, JSON.stringify(stats, null, 2), 'utf-8');
+    // Sincronizar a GitHub para la web
+    syncStatsToGitHub(stats);
   } catch (e) {}
+}
+
+// --- Sincronizar stats a GitHub ---
+let _statsSha = null;
+let _syncTimeout = null;
+
+async function syncStatsToGitHub(stats) {
+  const token = process.env.GITHUB_TOKEN;
+  const repo = process.env.GITHUB_REPO || 'SamiGamin/ildc-website';
+  if (!token) return;
+
+  // Debounce: esperar 5 segundos para agrupar cambios rapidos
+  if (_syncTimeout) clearTimeout(_syncTimeout);
+  _syncTimeout = setTimeout(async () => {
+    try {
+      // Obtener sha actual
+      const getRes = await fetch(`https://api.github.com/repos/${repo}/contents/stats.json`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (getRes.ok) {
+        const data = await getRes.json();
+        _statsSha = data.sha;
+      }
+
+      const body = {
+        message: `Actualizar stats (${Object.keys(stats.players || {}).length} jugadores)`,
+        content: Buffer.from(JSON.stringify(stats, null, 2)).toString('base64')
+      };
+      if (_statsSha) body.sha = _statsSha;
+
+      const res = await fetch(`https://api.github.com/repos/${repo}/contents/stats.json`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        _statsSha = result.content.sha;
+        console.log('[BOT] Stats sincronizados a GitHub.');
+      } else {
+        const err = await res.json();
+        console.log('[ERROR] GitHub stats sync:', err.message);
+      }
+    } catch (e) {
+      console.log('[ERROR] Stats sync:', e.message);
+    }
+  }, 5000);
 }
 
 function trackPlayerJoin(playerName) {
